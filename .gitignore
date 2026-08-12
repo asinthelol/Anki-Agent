@@ -134,3 +134,100 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Python
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python environment files
+.python-version
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# Linters
+.ruff_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# Flask / FastAPI / local app files
+instance/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Documentation builds
+docs/_build/
+
+# Secrets / local config
+.env
+.env.*
+
+# IDE settings (Python-specific)
+.vscode/
+.idea/
+
+# Poetry
+poetry.lock  # remove this line if you want to commit Poetry lockfiles
+
+# PDM
+.pdm-python
+.pdm-build/
+
+# Hatch
+.hatch/
