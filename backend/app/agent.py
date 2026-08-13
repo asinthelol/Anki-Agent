@@ -41,6 +41,13 @@ class Conversation:
 _conversations: dict[str, Conversation] = {}
 
 
+def get_conversation(conversation_id: str) -> Conversation:
+    try:
+        return _conversations[conversation_id]
+    except KeyError:
+        raise KeyError(f"conversation {conversation_id} not found") from None
+
+
 def start_conversation(user_message: str) -> Conversation:
     """
     Begin a new conversation with an initial user message and run the loop.
@@ -57,7 +64,7 @@ def resolve_pending(conversation_id: str, decisions: dict[str, bool]) -> Convers
     Resolve some or all pending write-tool calls for a paused conversation.
     `decisions` maps tool_use_id -> approved (True) or rejected (False).
     """
-    conversation = _conversations[conversation_id]
+    conversation = get_conversation(conversation_id)
     if conversation.status != "awaiting_confirmation":
         raise ValueError(f"conversation {conversation_id} has no pending confirmations")
 

@@ -272,6 +272,8 @@ _CONFIRMATION_REQUIRED: dict[str, bool] = {spec["name"]: spec["requires_confirma
 
 _DISPATCH_TABLE = {spec["name"]: getattr(ankiconnect, spec["name"]) for spec in TOOL_SPECS}
 
+TOOL_DESCRIPTIONS: dict[str, str] = {spec["name"]: spec["description"] for spec in TOOL_SPECS}
+
 
 def requires_confirmation(tool_name: str) -> bool:
     """Whether agent.py must pause and get user approval before running this tool."""
