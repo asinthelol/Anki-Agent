@@ -131,6 +131,15 @@ def _handle_model_command(arg: str, current_model: str) -> str:
         return current_model
 
     new_model = agent.AVAILABLE_MODELS.get(arg, arg)
+
+    if not agent.supports_compaction(new_model):
+        print(f'{_RED}Compaction is not available for "{arg}". Long conversations may hit the context limit sooner.{_RESET}')
+        confirm = input("Switch anyway? [y/N] ").strip().lower()
+        if confirm != "y":
+            print("Keeping current model.\n")
+            return current_model
+        print()
+
     _clear_screen()
     _print_banner(new_model)
     return new_model

@@ -20,7 +20,24 @@ AVAILABLE_MODELS = {
     "sonnet": "claude-sonnet-5",
     "opus": "claude-opus-5",
 }
-DEFAULT_MODEL = AVAILABLE_MODELS["haiku"]
+DEFAULT_MODEL = AVAILABLE_MODELS["sonnet"]
+
+# Models that support server-side compaction (compact_20260112).
+# Haiku 4.5 is not supported
+_COMPACTION_BETA = "compact-2026-01-12"
+_COMPACTION_SUPPORTED_MODELS = {
+    "claude-fable-5",
+    "claude-opus-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-5",
+    "claude-sonnet-4-6",
+}
+
+
+def supports_compaction(model: str) -> bool:
+    return model in _COMPACTION_SUPPORTED_MODELS
 
 SYSTEM_PROMPT = """
 You are an Anki study coach. You have read tools to inspect a user's deck,
@@ -126,7 +143,7 @@ def resolve_pending(conversation_id: str, decisions: dict[str, bool]) -> Convers
 
 def _run_loop(conversation: Conversation) -> None:
     while True:
-        response = client.messages.create(
+        request_kwargs = dict(
             model=conversation.model,
             max_tokens=16000,
             system=SYSTEM_PROMPT,
@@ -134,6 +151,14 @@ def _run_loop(conversation: Conversation) -> None:
             tools=tools.CLAUDE_TOOLS,
             messages=conversation.messages,
         )
+        if supports_compaction(conversation.model):
+            response = client.beta.messages.create(
+                betas=[_COMPACTION_BETA],
+                context_management={"edits": [{"type": "compact_20260112"}]},
+                **request_kwargs,
+            )
+        else:
+            response = client.messages.create(**request_kwargs)
         conversation.messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason != "tool_use":
