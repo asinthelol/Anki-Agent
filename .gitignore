@@ -218,6 +218,9 @@ docs/_build/
 .env
 .env.*
 
+# Persisted CLI conversation state
+.conversations/
+
 # IDE settings (Python-specific)
 .vscode/
 .idea/

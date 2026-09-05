@@ -115,6 +115,7 @@ def _handle(conversation: agent.Conversation) -> agent.Conversation:
         decisions = _prompt_decisions(conversation.pending)
         with _Spinner():
             conversation = agent.resolve_pending(conversation.id, decisions)
+        agent.save_conversation(conversation)
     print(conversation.final_text or "(no response)")
     print()
     return conversation
@@ -149,7 +150,20 @@ def main() -> None:
     conversation: agent.Conversation | None = None
     current_model = agent.DEFAULT_MODEL
     _clear_screen()
-    _print_banner(current_model)
+
+    resumed_id = agent.latest_saved_conversation_id()
+    if resumed_id:
+        conversation = agent.load_conversation(resumed_id)
+        current_model = conversation.model
+        _print_banner(current_model)
+        print("Resumed previous conversation.\n")
+        if conversation.status == "awaiting_confirmation":
+            conversation = _handle(conversation)
+        elif conversation.final_text:
+            print(conversation.final_text)
+            print()
+    else:
+        _print_banner(current_model)
 
     while True:
         try:
@@ -163,6 +177,8 @@ def main() -> None:
         if user_input == "/quit":
             break
         if user_input == "/new":
+            if conversation is not None:
+                agent.delete_conversation(conversation.id)
             conversation = None
             print("Started a new conversation.\n")
             continue
@@ -179,6 +195,7 @@ def main() -> None:
                     conversation = agent.start_conversation(user_input, model=current_model)
                 else:
                     conversation = agent.send_message(conversation.id, user_input, model=current_model)
+            agent.save_conversation(conversation)
             conversation = _handle(conversation)
         except anthropic.AuthenticationError:
             print("\nAnthropic rejected the API key. Please check ANTHROPIC_API_KEY in backend/.env.\n")

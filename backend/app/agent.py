@@ -9,11 +9,14 @@ one. Conversations are kept in memory, keyed by id.
 import json
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import anthropic
 
 from . import tools
+
+_STORAGE_DIR = Path(__file__).resolve().parent.parent / ".conversations"
 
 AVAILABLE_MODELS = {
     "haiku": "claude-haiku-4-5-20251001",
@@ -69,6 +72,60 @@ def get_conversation(conversation_id: str) -> Conversation:
         return _conversations[conversation_id]
     except KeyError:
         raise KeyError(f"conversation {conversation_id} not found") from None
+
+
+def _storage_path(conversation_id: str) -> Path:
+    return _STORAGE_DIR / f"{conversation_id}.json"
+
+
+def save_conversation(conversation: Conversation) -> None:
+    """
+    Persist a conversation to disk so it can be resumed after the process exits.
+    """
+    _STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    data = {
+        "id": conversation.id,
+        "model": conversation.model,
+        "messages": conversation.messages,
+        "pending": conversation.pending,
+        "status": conversation.status,
+        "final_text": conversation.final_text,
+    }
+    _storage_path(conversation.id).write_text(json.dumps(data), encoding="utf-8")
+
+
+def load_conversation(conversation_id: str) -> Conversation:
+    """
+    Load a previously saved conversation from disk and register it in memory.
+    """
+    data = json.loads(_storage_path(conversation_id).read_text(encoding="utf-8"))
+    conversation = Conversation(
+        id=data["id"],
+        model=data["model"],
+        messages=data["messages"],
+        pending=data["pending"],
+        status=data["status"],
+        final_text=data["final_text"],
+    )
+    _conversations[conversation.id] = conversation
+    return conversation
+
+
+def latest_saved_conversation_id() -> str | None:
+    """
+    Id of the most recently saved conversation on disk, if any.
+    """
+    if not _STORAGE_DIR.exists():
+        return None
+    files = sorted(_STORAGE_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return files[0].stem if files else None
+
+
+def delete_conversation(conversation_id: str) -> None:
+    """
+    Remove a saved conversation's file, if present.
+    """
+    _storage_path(conversation_id).unlink(missing_ok=True)
 
 
 def start_conversation(user_message: str, model: str = DEFAULT_MODEL) -> Conversation:
@@ -159,7 +216,10 @@ def _run_loop(conversation: Conversation) -> None:
             )
         else:
             response = client.messages.create(**request_kwargs)
-        conversation.messages.append({"role": "assistant", "content": response.content})
+        conversation.messages.append({
+            "role": "assistant",
+            "content": [block.model_dump(mode="json") for block in response.content],
+        })
 
         if response.stop_reason != "tool_use":
             conversation.status = "done"
