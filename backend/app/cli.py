@@ -15,8 +15,20 @@ import threading
 import time
 
 import anthropic
+import colorama
 
 from . import agent, tools
+
+colorama.just_fix_windows_console()
+
+_RESET = "\033[0m"
+_USER_HIGHLIGHT = "\033[48;5;238m\033[38;5;208m"  # orange text on dark gray background
+
+
+def _print_user_message(text: str) -> None:
+    """Redraw the just-typed line highlighted"""
+    sys.stdout.write("\033[1A\033[2K")
+    print(f"{_USER_HIGHLIGHT} {text} {_RESET}")
 
 
 class _Spinner:
@@ -107,6 +119,8 @@ def main() -> None:
             arg = user_input[len("/model"):].strip()
             current_model = _handle_model_command(arg, current_model)
             continue
+
+        _print_user_message(user_input)
 
         try:
             with _Spinner():
