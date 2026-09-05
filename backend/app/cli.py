@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import itertools
+import shutil
 import sys
 import threading
 import time
@@ -22,7 +23,41 @@ from . import agent, tools
 colorama.just_fix_windows_console()
 
 _RESET = "\033[0m"
+_BOLD = "\033[1m"
+_ORANGE = "\033[38;5;208m"
+_RED = "\033[31m"
 _USER_HIGHLIGHT = "\033[48;5;238m\033[38;5;208m"  # orange text on dark gray background
+
+
+def _clear_screen() -> None:
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
+
+
+def _print_banner(model: str) -> None:
+    """
+    A boxed header showing the app name, active model, and available commands.
+    """
+    title = " Anki Study Agent "
+    model_line = f" Model: {model}"
+    commands_line = " Commands: /new (reset)  /model [name] (switch)  /quit (exit)"
+
+    interior_width = max(len(model_line), len(commands_line), len(title) + 4)
+    term_width = shutil.get_terminal_size(fallback=(80, 24)).columns
+    interior_width = min(interior_width, max(term_width - 2, len(title) + 4))
+
+    left_pad = (interior_width - len(title)) // 2
+    right_pad = interior_width - len(title) - left_pad
+
+    def content_row(text: str) -> str:
+        return f"{_ORANGE}│{_RESET}{text.ljust(interior_width)[:interior_width]}{_ORANGE}│{_RESET}"
+
+    print(f"{_ORANGE}┌{'─' * left_pad}{_RESET}{_BOLD}{title}{_RESET}{_ORANGE}{'─' * right_pad}┐{_RESET}")
+    print(content_row(model_line))
+    print(f"{_ORANGE}├{'─' * interior_width}┤{_RESET}")
+    print(content_row(commands_line))
+    print(f"{_ORANGE}└{'─' * interior_width}┘{_RESET}")
+    print()
 
 
 def _print_user_message(text: str) -> None:
@@ -32,7 +67,9 @@ def _print_user_message(text: str) -> None:
 
 
 class _Spinner:
-    """Rotating-character 'Thinking' indicator for the duration of a blocking call."""
+    """
+    Rotating-character 'Thinking' indicator for the duration of a blocking call.
+    """
 
     _FRAMES = "|/-\\"
 
@@ -85,20 +122,25 @@ def _handle(conversation: agent.Conversation) -> agent.Conversation:
 
 def _handle_model_command(arg: str, current_model: str) -> str:
     if not arg:
-        print(f"\nCurrent model: {current_model}")
-        print(f"Available: {', '.join(agent.AVAILABLE_MODELS)} (or any full model id)\n")
+        print(f"Available: {', '.join(agent.AVAILABLE_MODELS)}\n")
+        return current_model
+
+    valid = set(agent.AVAILABLE_MODELS) | set(agent.AVAILABLE_MODELS.values())
+    if arg not in valid:
+        print(f'{_RED}Model "{arg}" is not an available option.{_RESET}\n')
         return current_model
 
     new_model = agent.AVAILABLE_MODELS.get(arg, arg)
-    print(f"\nSwitched to {new_model}.\n")
+    _clear_screen()
+    _print_banner(new_model)
     return new_model
 
 
 def main() -> None:
-    print("Anki Study Agent CLI | type a message, /new to reset, /model [name] to switch models, /quit to exit.\n")
     conversation: agent.Conversation | None = None
     current_model = agent.DEFAULT_MODEL
-    print(f"Model: {current_model}\n")
+    _clear_screen()
+    _print_banner(current_model)
 
     while True:
         try:
