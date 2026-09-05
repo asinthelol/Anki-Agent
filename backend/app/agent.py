@@ -59,6 +59,21 @@ def start_conversation(user_message: str) -> Conversation:
     return conversation
 
 
+def send_message(conversation_id: str, user_message: str) -> Conversation:
+    """
+    Continue a finished conversation with a new user message and run the loop.
+    """
+    conversation = get_conversation(conversation_id)
+    if conversation.status != "done":
+        raise ValueError(f"conversation {conversation_id} is not done ({conversation.status})")
+
+    conversation.messages.append({"role": "user", "content": user_message})
+    conversation.final_text = None
+    conversation.status = "in_progress"
+    _run_loop(conversation)
+    return conversation
+
+
 def resolve_pending(conversation_id: str, decisions: dict[str, bool]) -> Conversation:
     """
     Resolve some or all pending write-tool calls for a paused conversation.
