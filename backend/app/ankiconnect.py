@@ -185,6 +185,50 @@ def create_struggling_deck(deck_name: str, card_ids: list[int]) -> None:
     move_cards_to_deck(card_ids, deck_name)
 
 
+def create_card(
+    deck_name: str,
+    model_name: str,
+    fields: dict[str, str],
+    tags: list[str] | None = None,
+) -> int:
+    """
+    Create a new note/card in a deck.
+    """
+    return invoke(
+        "addNote",
+        note={
+            "deckName": deck_name,
+            "modelName": model_name,
+            "fields": fields,
+            "options": {"allowDuplicate": False},
+            "tags": tags or [],
+        },
+    )
+
+
+def create_cards(
+    deck_name: str,
+    model_name: str,
+    fields_list: list[dict[str, str]],
+    tags: list[str] | None = None,
+) -> list[int | None]:
+    """
+    Create multiple notes/cards in a deck in one call. Returns one id per note
+    (None for any that failed, e.g. as a duplicate).
+    """
+    notes = [
+        {
+            "deckName": deck_name,
+            "modelName": model_name,
+            "fields": fields,
+            "options": {"allowDuplicate": False},
+            "tags": tags or [],
+        }
+        for fields in fields_list
+    ]
+    return invoke("addNotes", notes=notes)
+
+
 def create_reversed_cards(
     card_ids: list[int],
     new_deck_name: str,
