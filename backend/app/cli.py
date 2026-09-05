@@ -9,9 +9,43 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import itertools
+import sys
+import threading
+import time
+
 import anthropic
 
 from . import agent, tools
+
+
+class _Spinner:
+    """Rotating-character 'Thinking' indicator for the duration of a blocking call."""
+
+    _FRAMES = "|/-\\"
+
+    def __init__(self, message: str = "Thinking..."):
+        self._message = message
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._spin, daemon=True)
+
+    def _spin(self) -> None:
+        for frame in itertools.cycle(self._FRAMES):
+            if self._stop_event.is_set():
+                break
+            sys.stdout.write(f"\r{frame} {self._message}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+        sys.stdout.write("\r" + " " * (len(self._message) + 2) + "\r")
+        sys.stdout.flush()
+
+    def __enter__(self) -> "_Spinner":
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        self._stop_event.set()
+        self._thread.join()
 
 
 def _prompt_decisions(pending: list[dict]) -> dict[str, bool]:
@@ -30,7 +64,8 @@ def _prompt_decisions(pending: list[dict]) -> dict[str, bool]:
 def _handle(conversation: agent.Conversation) -> agent.Conversation:
     while conversation.status == "awaiting_confirmation":
         decisions = _prompt_decisions(conversation.pending)
-        conversation = agent.resolve_pending(conversation.id, decisions)
+        with _Spinner():
+            conversation = agent.resolve_pending(conversation.id, decisions)
     print(conversation.final_text or "(no response)")
     print()
     return conversation
@@ -74,10 +109,11 @@ def main() -> None:
             continue
 
         try:
-            if conversation is None:
-                conversation = agent.start_conversation(user_input, model=current_model)
-            else:
-                conversation = agent.send_message(conversation.id, user_input, model=current_model)
+            with _Spinner():
+                if conversation is None:
+                    conversation = agent.start_conversation(user_input, model=current_model)
+                else:
+                    conversation = agent.send_message(conversation.id, user_input, model=current_model)
             conversation = _handle(conversation)
         except anthropic.AuthenticationError:
             print("\nAnthropic rejected the API key. Please check ANTHROPIC_API_KEY in backend/.env.\n")
