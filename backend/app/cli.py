@@ -36,9 +36,22 @@ def _handle(conversation: agent.Conversation) -> agent.Conversation:
     return conversation
 
 
+def _handle_model_command(arg: str, current_model: str) -> str:
+    if not arg:
+        print(f"\nCurrent model: {current_model}")
+        print(f"Available: {', '.join(agent.AVAILABLE_MODELS)} (or any full model id)\n")
+        return current_model
+
+    new_model = agent.AVAILABLE_MODELS.get(arg, arg)
+    print(f"\nSwitched to {new_model}.\n")
+    return new_model
+
+
 def main() -> None:
-    print("Anki Study Agent CLI | type a message, /new to reset, /quit to exit.\n")
+    print("Anki Study Agent CLI | type a message, /new to reset, /model [name] to switch models, /quit to exit.\n")
     conversation: agent.Conversation | None = None
+    current_model = agent.DEFAULT_MODEL
+    print(f"Model: {current_model}\n")
 
     while True:
         try:
@@ -55,12 +68,16 @@ def main() -> None:
             conversation = None
             print("Started a new conversation.\n")
             continue
+        if user_input == "/model" or user_input.startswith("/model "):
+            arg = user_input[len("/model"):].strip()
+            current_model = _handle_model_command(arg, current_model)
+            continue
 
         try:
             if conversation is None:
-                conversation = agent.start_conversation(user_input)
+                conversation = agent.start_conversation(user_input, model=current_model)
             else:
-                conversation = agent.send_message(conversation.id, user_input)
+                conversation = agent.send_message(conversation.id, user_input, model=current_model)
             conversation = _handle(conversation)
         except anthropic.AuthenticationError:
             print("\nAnthropic rejected the API key. Please check ANTHROPIC_API_KEY in backend/.env.\n")

@@ -15,7 +15,12 @@ import anthropic
 
 from . import tools
 
-MODEL = "claude-sonnet-5"
+AVAILABLE_MODELS = {
+    "haiku": "claude-haiku-4-5-20251001",
+    "sonnet": "claude-sonnet-5",
+    "opus": "claude-opus-5",
+}
+DEFAULT_MODEL = AVAILABLE_MODELS["haiku"]
 
 SYSTEM_PROMPT = """
 You are an Anki study coach. You have read tools to inspect a user's deck,
@@ -32,6 +37,7 @@ client = anthropic.Anthropic()
 @dataclass
 class Conversation:
     id: str
+    model: str = DEFAULT_MODEL
     messages: list = field(default_factory=list)
     pending: list = field(default_factory=list)  # [{tool_use_id, name, input}]
     status: str = "in_progress"  # "in_progress" | "awaiting_confirmation" | "done"
@@ -48,25 +54,28 @@ def get_conversation(conversation_id: str) -> Conversation:
         raise KeyError(f"conversation {conversation_id} not found") from None
 
 
-def start_conversation(user_message: str) -> Conversation:
+def start_conversation(user_message: str, model: str = DEFAULT_MODEL) -> Conversation:
     """
     Begin a new conversation with an initial user message and run the loop.
     """
-    conversation = Conversation(id=str(uuid.uuid4()))
+    conversation = Conversation(id=str(uuid.uuid4()), model=model)
     conversation.messages.append({"role": "user", "content": user_message})
     _conversations[conversation.id] = conversation
     _run_loop(conversation)
     return conversation
 
 
-def send_message(conversation_id: str, user_message: str) -> Conversation:
+def send_message(conversation_id: str, user_message: str, model: str | None = None) -> Conversation:
     """
     Continue a finished conversation with a new user message and run the loop.
+    `model`, if given, switches the model used for this turn onward.
     """
     conversation = get_conversation(conversation_id)
     if conversation.status != "done":
         raise ValueError(f"conversation {conversation_id} is not done ({conversation.status})")
 
+    if model is not None:
+        conversation.model = model
     conversation.messages.append({"role": "user", "content": user_message})
     conversation.final_text = None
     conversation.status = "in_progress"
@@ -118,7 +127,7 @@ def resolve_pending(conversation_id: str, decisions: dict[str, bool]) -> Convers
 def _run_loop(conversation: Conversation) -> None:
     while True:
         response = client.messages.create(
-            model=MODEL,
+            model=conversation.model,
             max_tokens=16000,
             system=SYSTEM_PROMPT,
             thinking={"type": "disabled"},
