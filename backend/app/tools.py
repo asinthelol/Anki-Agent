@@ -180,6 +180,47 @@ TOOL_SPECS = [
         "requires_confirmation": True,
     },
     {
+        "name": "create_card",
+        "description": "Create a new card in a deck.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "deck_name": {"type": "string"},
+                "model_name": {"type": "string", "description": "Card type, e.g. 'Basic'."},
+                "fields": {
+                    "type": "object",
+                    "description": "Field name -> value, e.g. {'Front': ..., 'Back': ...} for a Basic card.",
+                    "additionalProperties": {"type": "string"},
+                },
+                "tags": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["deck_name", "model_name", "fields"],
+        },
+        "requires_confirmation": True,
+    },
+    {
+        "name": "create_cards",
+        "description": "Create multiple cards in a deck in one call. All share the same card type and tags.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "deck_name": {"type": "string"},
+                "model_name": {"type": "string", "description": "Card type, e.g. 'Basic'."},
+                "fields_list": {
+                    "type": "array",
+                    "description": "One field-name -> value object per card.",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"},
+                    },
+                },
+                "tags": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["deck_name", "model_name", "fields_list"],
+        },
+        "requires_confirmation": True,
+    },
+    {
         "name": "move_cards_to_deck",
         "description": "Move cards into a deck, e.g. pull leeches/struggling cards out for focused review.",
         "input_schema": {
@@ -207,7 +248,7 @@ TOOL_SPECS = [
     },
     {
         "name": "create_reversed_cards",
-        "description": "Clone notes with front/back fields swapped into a new deck, for reverse-recall practice.",
+        "description": "Clone cards with front/back fields swapped into a new deck, for reverse-recall practice.",
         "input_schema": {
             "type": "object",
             "properties": {
